@@ -1,0 +1,11 @@
+<% if (error) { %><p class="error"><%= error %></p><% } %>
+<form method="post" action="<%= action %>">
+    <label for="title">Titel</label>
+    <input id="title" name="title" type="text" value="<%= doc.title %>" required>
+
+    <label for="content">Innehåll</label>
+    <textarea id="content" name="content" rows="18"><%= doc.content %></textarea>
+
+    <button type="submit">Spara</button>
+    <a href="/">Avbryt</a>
+</form>
