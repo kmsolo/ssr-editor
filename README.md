@@ -26,3 +26,7 @@ Serverrenderad dokumenteditor med Express, EJS och SQLite.
 | GET   | /:id          | Redigera dokument    |
 | POST  | /:id          | Uppdatera dokument   |
 | POST  | /:id/delete   | Ta bort dokument     |
+
+
+
+Tyvärr har inte alla .mjs skapats. Ska göras.
