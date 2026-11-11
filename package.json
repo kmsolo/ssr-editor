@@ -4,13 +4,17 @@
   "description": "Serverrenderad texteditor med Express, EJS och SQLite",
   "main": "app.mjs",
   "scripts": {
-    "start": "node app.mjs",
-    "dev": "node --watch app.js"
+    "start": "node --env-file=.env app.mjs",
+    "dev": "node --watch app.js",
+    "test": "node --test"
   },
   "license": "MIT",
   "dependencies": {
     "cors": "^2.8.6",
     "express": "^4.19.2",
     "mongodb": "^7.8.0"
+  },
+  "devDependencies": {
+    "supertest": "^7.3.2"
   }
 }
