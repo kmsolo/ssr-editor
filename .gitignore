@@ -1,2 +1,4 @@
 node_modules/
 db/docs.sqlite
+.env
+docs.sqlite

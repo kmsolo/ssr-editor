@@ -1,9 +1,0 @@
-<%- include("partials/header", { title: "Redigera" }) %>
-<h1>Redigera dokument</h1>
-<%- include("partials/form", { action: "/update", doc, error }) %>
-
-<form method="post" action="/<%= doc.id %>/delete" class="delete"
-      onsubmit="return confirm('Ta bort dokumentet?');">
-    <button type="submit" class="danger">Ta bort</button>
-</form>
-<%- include("partials/footer") %>

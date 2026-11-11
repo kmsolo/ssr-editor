@@ -1,126 +1,92 @@
 import express from "express";
-import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
-import { run, all, get } from "./db/database.mjs";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+import cors from "cors";
+import { pathToFileURL } from "node:url";
+import { getDocuments, ObjectId } from "./db/database.mjs";
 
 const app = express();
 const port = process.env.PORT || 1337;
 
-app.set("view engine", "ejs");
-app.set("views", path.join(__dirname, "views"));
+app.use(cors());
+app.use(express.json());
 
-app.use(express.urlencoded({ extended: false }));
-app.use(express.static(path.join(__dirname, "public")));
+const toDoc = (d) => ({
+    id: d._id.toString(),
+    title: d.title,
+    content: d.content,
+    updatedAt: d.updatedAt
+});
 
-// Lista alla dokument
-app.get("/", async (req, res, next) => {
-    try {
-        const docs = await all(
-            "SELECT id, title, updated_at FROM documents ORDER BY updated_at DESC"
-        );
-        res.render("index", { docs });
-    } catch (err) {
-        next(err);
+function validId(req, res, next) {
+    if (!ObjectId.isValid(req.params.id)) {
+        return res.status(400).json({ error: "Ogiltigt id" });
     }
+    next();
+}
+
+// Lista
+app.get("/documents", async (req, res, next) => {
+    try {
+        const docs = await (await getDocuments()).find().sort({ updatedAt: -1 }).toArray();
+        res.json(docs.map(toDoc));
+    } catch (err) { next(err); }
 });
 
-// Formulär för nytt dokument
-app.get("/new", (req, res) => {
-    res.render("new", { error: null, doc: { title: "", content: "" } });
+// Hämta ett
+app.get("/documents/:id", validId, async (req, res, next) => {
+    try {
+        const doc = await (await getDocuments()).findOne({ _id: new ObjectId(req.params.id) });
+        if (!doc) return res.status(404).json({ error: "Dokumentet finns inte" });
+        res.json(toDoc(doc));
+    } catch (err) { next(err); }
 });
 
-// Spara nytt dokument
-app.post("/new", async (req, res, next) => {
+// Skapa
+app.post("/documents", async (req, res, next) => {
     try {
         const title = (req.body.title || "").trim();
         const content = req.body.content || "";
+        if (!title) return res.status(400).json({ error: "Titel måste fyllas i" });
 
-        if (!title) {
-            return res.status(400).render("new", {
-                error: "Titel måste fyllas i.",
-                doc: { title, content }
-            });
-        }
-
-        await run("INSERT INTO documents (title, content) VALUES (?, ?)", [title, content]);
-        res.redirect("/");
-    } catch (err) {
-        next(err);
-    }
+        const doc = { title, content, updatedAt: new Date().toISOString() };
+        const result = await (await getDocuments()).insertOne(doc);
+        res.status(201).json(toDoc({ ...doc, _id: result.insertedId }));
+    } catch (err) { next(err); }
 });
 
-// Redigera dokument
-app.get("/:id(\\d+)", async (req, res, next) => {
+// Uppdatera
+app.put("/documents/:id", validId, async (req, res, next) => {
     try {
-        const doc = await get("SELECT * FROM documents WHERE id = ?", [req.params.id]);
-
-        if (!doc) {
-            return res.status(404).render("error", { message: "Dokumentet finns inte." });
-        }
-        res.render("edit", { doc, error: null });
-    } catch (err) {
-        next(err);
-    }
-});
-
-// Uppdatera dokument (id skickas med i formuläret)
-app.post("/update", async (req, res, next) => {
-    try {
-        const id = Number.parseInt(req.body.id, 10);
         const title = (req.body.title || "").trim();
         const content = req.body.content || "";
+        if (!title) return res.status(400).json({ error: "Titel måste fyllas i" });
 
-        if (!Number.isInteger(id)) {
-            return res.status(400).render("error", { message: "Ogiltigt dokument-id." });
-        }
-
-        if (!title) {
-            return res.status(400).render("edit", {
-                error: "Titel måste fyllas i.",
-                doc: { id, title, content }
-            });
-        }
-
-        const result = await run(
-            "UPDATE documents SET title = ?, content = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-            [title, content, id]
+        const result = await (await getDocuments()).updateOne(
+            { _id: new ObjectId(req.params.id) },
+            { $set: { title, content, updatedAt: new Date().toISOString() } }
         );
-
-        if (result.changes === 0) {
-            return res.status(404).render("error", { message: "Dokumentet finns inte." });
-        }
-        res.redirect(`/${id}`);
-    } catch (err) {
-        next(err);
-    }
+        if (result.matchedCount === 0) return res.status(404).json({ error: "Dokumentet finns inte" });
+        res.json({ id: req.params.id, title, content });
+    } catch (err) { next(err); }
 });
 
-// Ta bort dokument
-app.post("/:id(\\d+)/delete", async (req, res, next) => {
+// Ta bort
+app.delete("/documents/:id", validId, async (req, res, next) => {
     try {
-        await run("DELETE FROM documents WHERE id = ?", [req.params.id]);
-        res.redirect("/");
-    } catch (err) {
-        next(err);
-    }
+        const result = await (await getDocuments()).deleteOne({ _id: new ObjectId(req.params.id) });
+        if (result.deletedCount === 0) return res.status(404).json({ error: "Dokumentet finns inte" });
+        res.status(204).end();
+    } catch (err) { next(err); }
 });
 
-// 404
-app.use((req, res) => {
-    res.status(404).render("error", { message: "Sidan finns inte." });
-});
+app.use((req, res) => res.status(404).json({ error: "Sidan finns inte" }));
 
-// Felhanterare
 app.use((err, req, res, next) => {
     console.error(err);
-    res.status(500).render("error", { message: "Något gick fel på servern." });
+    res.status(500).json({ error: "Något gick fel på servern" });
 });
 
-// Starta bara servern om filen körs direkt (inte vid import, t.ex. i tester)
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
-    app.listen(port, () => console.log(`ssr-editor lyssnar på http://localhost:${port}`));
+    app.listen(port, () => console.log(`API lyssnar på port ${port}`));
 }
 
 export default app;
