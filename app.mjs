@@ -1,6 +1,9 @@
-const express = require("express");
-const path = require("path");
-const { run, all, get } = require("./db/database");
+import express from "express";
+import path from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { run, all, get } from "./db/database.mjs";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 const port = process.env.PORT || 1337;
@@ -62,12 +65,16 @@ app.get("/:id(\\d+)", async (req, res, next) => {
     }
 });
 
-// Uppdatera dokument
-app.post("/:id(\\d+)", async (req, res, next) => {
+// Uppdatera dokument (id skickas med i formuläret)
+app.post("/update", async (req, res, next) => {
     try {
+        const id = Number.parseInt(req.body.id, 10);
         const title = (req.body.title || "").trim();
         const content = req.body.content || "";
-        const id = req.params.id;
+
+        if (!Number.isInteger(id)) {
+            return res.status(400).render("error", { message: "Ogiltigt dokument-id." });
+        }
 
         if (!title) {
             return res.status(400).render("edit", {
@@ -111,8 +118,9 @@ app.use((err, req, res, next) => {
     res.status(500).render("error", { message: "Något gick fel på servern." });
 });
 
-if (require.main === module) {
+// Starta bara servern om filen körs direkt (inte vid import, t.ex. i tester)
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
     app.listen(port, () => console.log(`ssr-editor lyssnar på http://localhost:${port}`));
 }
 
-module.exports = app;
+export default app;

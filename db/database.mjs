@@ -1,8 +1,12 @@
-const sqlite3 = require("sqlite3").verbose();
-const path = require("path");
+import sqlite3 from "sqlite3";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const file = process.env.DB_FILE || path.join(__dirname, "docs.sqlite");
-const db = new sqlite3.Database(file);
+
+const sqlite = sqlite3.verbose();
+export const db = new sqlite.Database(file);
 
 db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS documents (
@@ -14,21 +18,19 @@ db.serialize(() => {
 });
 
 // Små promise-wrappers så att routes kan använda async/await
-const run = (sql, params = []) =>
+export const run = (sql, params = []) =>
     new Promise((resolve, reject) => {
         db.run(sql, params, function (err) {
             err ? reject(err) : resolve({ id: this.lastID, changes: this.changes });
         });
     });
 
-const all = (sql, params = []) =>
+export const all = (sql, params = []) =>
     new Promise((resolve, reject) => {
         db.all(sql, params, (err, rows) => (err ? reject(err) : resolve(rows)));
     });
 
-const get = (sql, params = []) =>
+export const get = (sql, params = []) =>
     new Promise((resolve, reject) => {
         db.get(sql, params, (err, row) => (err ? reject(err) : resolve(row)));
     });
-
-module.exports = { db, run, all, get };

@@ -2,9 +2,9 @@
   "name": "ssr-editor",
   "version": "1.0.0",
   "description": "Serverrenderad texteditor med Express, EJS och SQLite",
-  "main": "app.js",
+  "main": "app.mjs",
   "scripts": {
-    "start": "node app.js",
+    "start": "node app.mjs",
     "dev": "node --watch app.js"
   },
   "license": "MIT",

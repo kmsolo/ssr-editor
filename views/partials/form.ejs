@@ -1,5 +1,9 @@
 <% if (error) { %><p class="error"><%= error %></p><% } %>
 <form method="post" action="<%= action %>">
+    <% if (doc.id) { %>
+        <input type="hidden" name="id" value="<%= doc.id %>">
+    <% } %>
+
     <label for="title">Titel</label>
     <input id="title" name="title" type="text" value="<%= doc.title %>" required>
 
